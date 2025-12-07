@@ -1,5 +1,7 @@
 # 🕒 RenewHelper - 时序·守望 (Service Lifecycle Manager)
 
+[English](./README_EN.md) | **中文**
+
 ![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-orange?logo=cloudflare)
 ![Vue.js](https://img.shields.io/badge/Frontend-Vue3%20%2B%20ElementPlus-42b883?logo=vue.js)
 ![License](https://img.shields.io/badge/License-MIT-blue)
