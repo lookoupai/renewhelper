@@ -106,7 +106,7 @@ To enable auto-renewal and notifications, **you must set a Cron Trigger.**
 1.  Click the **Triggers** tab at the top.
 2.  Scroll down to **Cron Triggers**.
 3.  Click **Add Cron Trigger**.
-4.  **Cron schedule**: Enter `0/30 * * * *` exactly (This means check every 30 minutes. Do not change this logic!).
+4.  **Cron schedule**: Enter `0,30 * * * *` exactly (This means check every 30 minutes. Do not change this logic!).
 5.  Click **Add Trigger**.
 
 ### Method 3: Docker Deployment

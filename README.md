@@ -105,7 +105,7 @@
 1.  点击页面顶部的 **Triggers** (触发器) 标签。
 2.  向下滚动找到 **Cron Triggers**。
 3.  点击 **Add Cron Trigger**。
-4.  **Cron schedule**: 准确输入 `0/30 * * * *` (代表 UTC 时间每天每个半点检查一次，不能改！！！)。
+4.  **Cron schedule**: 准确输入 `0,30 * * * *` (代表 UTC 时间每天每个半点检查一次，不能改！！！)。
 5.  点击 **Add Trigger**。
 
 ### 方式三：Docker部署
