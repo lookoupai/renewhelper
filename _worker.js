@@ -1,5 +1,5 @@
 /**
- * Cloudflare Worker: RenewHelper (v1.3.7)
+ * Cloudflare Worker: RenewHelper (v1.4.0)
  * Author: LOSTFREE
  * Features: Multi-Channel Notify, Import/Export, Channel Test, Bilingual UI, Precise ICS Alarm
  * added: sort, filter v1.3.4
@@ -7,9 +7,12 @@
  * added: add lunar date tooltip v1.3.6
  * modified: modify lunar show logic v1.3.7
  * added: add next due preview v1.3.8
+ * added: add webhook channels v1.3.9
+ * added: add github actions deploy v1.4.0
+ * modified: mobile layout v1.4.1
  */
 
-const APP_VERSION = "v1.3.8";
+const APP_VERSION = "v1.4.1";
 
 // ==========================================
 // 1. Core Logic (Lunar & Calc)
@@ -1665,10 +1668,11 @@ const HTML = `<!DOCTYPE html>
         .notify-tabs .el-tabs__nav-wrap::after { background-color: var(--border); }
         .notify-item-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
         .notify-label { width: 90px; text-align: right; font-size: 12px; color: var(--text-dim); font-weight: 600; flex-shrink: 0; }
+        [v-cloak] { display: none !important; }
     </style>
 </head>
 <body>
-    <div id="app" class="min-h-screen p-4 sm:p-8 flex flex-col transition-colors duration-300">
+    <div id="app" v-cloak class="min-h-screen p-4 sm:p-8 flex flex-col transition-colors duration-300">
         <el-config-provider :locale="locale">
             <div v-if="!isLoggedIn" class="fixed inset-0 bg-slate-500/50 backdrop-blur flex items-center justify-center z-50">
                 <div class="mecha-panel p-12 w-full max-w-md text-center !border-t-4 !border-t-blue-500" style="clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px);">
@@ -1823,7 +1827,7 @@ const HTML = `<!DOCTYPE html>
             </template>
         </el-table-column>
 
-        <el-table-column :label="t('actions')" width="180" fixed="right" align="right">
+        <el-table-column :label="t('actions')" :width="actionColWidth" fixed="right" align="right">
             <template #default="scope">
                 <div class="flex justify-end items-center gap-2">
                     <el-tooltip :content="t('tipToggle')" placement="top" :hide-after="0">
@@ -1831,40 +1835,58 @@ const HTML = `<!DOCTYPE html>
                             <el-switch v-model="scope.row.enabled" size="small" style="--el-switch-on-color:#2563eb;" @change="toggleEnable(scope.row)"></el-switch>
                         </div>
                     </el-tooltip>
-                    <el-popconfirm 
-                        :title="t('msg.confirmRenew').replace('%s', scope.row.name)"
-                        :confirm-button-text="t('yes')" 
-                        :cancel-button-text="t('no')"
-                        width="200"
-                        @confirm="manualRenew(scope.row)">
-                        <template #reference>
-                            <div class="inline-flex">
-                                <el-tooltip :content="t('tipRenew')" placement="top" :hide-after="0">
-                                    <el-button class="!p-2 !rounded-none !ml-0" size="small" type="success" plain :icon="RefreshRight"></el-button>
-                                </el-tooltip>
-                            </div>
-                        </template>
-                    </el-popconfirm>
-                    <el-tooltip :content="t('tipEdit')" placement="top" :hide-after="0">
-                        <el-button class="!p-2 !rounded-none !ml-0" size="small" type="primary" plain :icon="Edit" @click="editItem(scope.row)"></el-button>
-                    </el-tooltip>
-                <el-popconfirm 
-                    :title="t('msg.confirmDel')"
-                    :confirm-button-text="t('yes')" 
-                    :cancel-button-text="t('no')"
-                    width="200"
-                    @confirm="deleteItem(scope.row)">
-                    <template #reference>
-                        <div class="inline-flex">
-                            <el-tooltip :content="t('tipDelete')" placement="top" :hide-after="0">
-                                <el-button class="!p-2 !rounded-none !ml-0" size="small" type="danger" plain :icon="Delete"></el-button>
-                            </el-tooltip>
-                        </div>
-                    </template>
-                </el-popconfirm>
+
+                    <!-- Desktop View -->
+                    <template v-if="windowWidth >= 640">
+                        <el-popconfirm 
+                            :title="t('msg.confirmRenew').replace('%s', scope.row.name)"
+                            :confirm-button-text="t('yes')" 
+                            :cancel-button-text="t('no')"
+                            width="200"
+                            @confirm="manualRenew(scope.row)">
+                            <template #reference>
+                                <div class="inline-flex">
+                                    <el-tooltip :content="t('tipRenew')" placement="top" :hide-after="0">
+                                        <el-button class="!p-2 !rounded-none !ml-0" size="small" type="success" plain :icon="RefreshRight"></el-button>
+                                    </el-tooltip>
                                 </div>
                             </template>
-                        </el-table-column>
+                        </el-popconfirm>
+                        <el-tooltip :content="t('tipEdit')" placement="top" :hide-after="0">
+                            <el-button class="!p-2 !rounded-none !ml-0" size="small" type="primary" plain :icon="Edit" @click="editItem(scope.row)"></el-button>
+                        </el-tooltip>
+                        <el-popconfirm 
+                            :title="t('msg.confirmDel')"
+                            :confirm-button-text="t('yes')" 
+                            :cancel-button-text="t('no')"
+                            width="200"
+                            @confirm="deleteItem(scope.row)">
+                            <template #reference>
+                                <div class="inline-flex">
+                                    <el-tooltip :content="t('tipDelete')" placement="top" :hide-after="0">
+                                        <el-button class="!p-2 !rounded-none !ml-0" size="small" type="danger" plain :icon="Delete"></el-button>
+                                    </el-tooltip>
+                                </div>
+                            </template>
+                        </el-popconfirm>
+                    </template>
+
+                    <!-- Mobile View -->
+                    <template v-else>
+                         <el-dropdown trigger="click">
+                            <el-button class="!p-2 !rounded-none !ml-0" size="small" type="primary" plain :icon="More"></el-button>
+                            <template #dropdown>
+                              <el-dropdown-menu>
+                                <el-dropdown-item :icon="RefreshRight" @click="confirmRenew(scope.row)">{{ t('tipRenew') }}</el-dropdown-item>
+                                <el-dropdown-item :icon="Edit" @click="editItem(scope.row)">{{ t('tipEdit') }}</el-dropdown-item>
+                                <el-dropdown-item :icon="Delete" @click="confirmDelete(scope.row)" divided class="text-red-500">{{ t('tipDelete') }}</el-dropdown-item>
+                              </el-dropdown-menu>
+                            </template>
+                          </el-dropdown>
+                    </template>
+                </div>
+            </template>
+        </el-table-column>
                     </el-table>
                 </div>
                 <div class="mt-4 flex justify-end">
@@ -1874,7 +1896,9 @@ const HTML = `<!DOCTYPE html>
                             v-model:page-size="pageSize"
                             :page-sizes="[10, 15, 30, 50, 100]"
                             :background="true"
-                            layout="total, sizes, prev, pager, next, jumper"
+                            :layout="paginationLayout"
+                            :small="windowWidth < 640"
+                            :pager-count="windowWidth < 640 ? 5 : 7"
                             :total="filteredList.length"
                             @size-change="() => window.scrollTo({top: 0, behavior: 'smooth'})"
                             @current-change="() => window.scrollTo({top: 0, behavior: 'smooth'})"
@@ -2088,7 +2112,7 @@ const HTML = `<!DOCTYPE html>
                 <template #footer><el-button @click="settingsVisible=false" size="large" class="mecha-btn">{{ t('cancel') }}</el-button><el-button type="primary" @click="saveSettings" size="large" class="mecha-btn !bg-blue-600">{{ t('saveSettings') }}</el-button></template>
             </el-dialog>
 
-            <el-drawer v-model="historyVisible" :title="t('sysLogs')" size="600px">
+            <el-drawer v-model="historyVisible" :title="t('sysLogs')" :size="drawerSize">
                 <div class="p-6" v-loading="historyLoading">
                     <div class="flex gap-2 mb-6">
                         <el-button size="default" type="primary" plain class="flex-1 mecha-btn" @click="openHistoryLogs" :icon="Search">{{ t('btnRefresh') }}</el-button>
@@ -2117,9 +2141,9 @@ const HTML = `<!DOCTYPE html>
         </el-config-provider>
     </div>
     <script>
-        const { createApp, ref, computed, onMounted, nextTick, reactive,watch } = Vue;
+        const { createApp, ref, computed, onMounted, onUnmounted, nextTick, reactive,watch } = Vue;
         const { ElMessage, ElMessageBox } = ElementPlus;
-        const { Edit, Delete, Plus, VideoPlay, Setting, Bell, Document, Lock, Monitor, SwitchButton, Calendar, Timer, Files, AlarmClock, Warning, Search, Cpu, Upload, Download, Link, Message, Promotion, Iphone, Moon, Sunny, RefreshRight } = ElementPlusIconsVue;
+        const { Edit, Delete, Plus, VideoPlay, Setting, Bell, Document, Lock, Monitor, SwitchButton, Calendar, Timer, Files, AlarmClock, Warning, Search, Cpu, Upload, Download, Link, Message, Promotion, Iphone, Moon, Sunny, RefreshRight, More } = ElementPlusIconsVue;
         const ZhCn = window.ElementPlusLocaleZhCn || {};
         const frontendCalc = {
             l2s(l) {
@@ -2175,7 +2199,7 @@ const HTML = `<!DOCTYPE html>
             lblServer: 'Server URL', lblDevKey: 'Device Key', lblFrom: 'From Email', lblTo: 'To Email',
             lblNotifyTime: 'Alarm Time', btnResetToken: 'RESET TOKEN',
             lblHeaders: 'Headers (JSON)', lblBody: 'Body (JSON)',
-            tag:{alert:'ALERT',renew:'RENEWED',disable:'DISABLED',normal:'NORMAL'},msg:{confirmRenew: 'Renew [%s] to today based on your timezone?',renewSuccess: 'Renewed! Date updated: %s -> %t',tokenReset: 'Token Reset. Update your calendar apps.', copyOk: 'Link Copied', exportSuccess: 'Backup Downloaded',importSuccess: 'Restore Success, Refreshing...',importFail: 'Import Failed, Check File Format',passReq:'Password Required',saved:'Data Saved',saveFail:'Save Failed',cleared:'Cleared',clearFail:'Clear Failed',loginFail:'Access Denied',loadLogFail:'Load Failed',confirmDel:'Confirm Delete?',dateError:'Last renew date cannot be earlier than create date',nameReq:'Name Required',nameExist:'Name already exists',futureError:'Renew date cannot be in the future',serviceDisabled:'Service Disabled',serviceEnabled:'Service Enabled',execFinish: 'EXECUTION FINISHED!'},tags:'TAGS',tagPlaceholder:'Press Enter to create tag',searchPlaceholder:'Search...',tagsCol:'TAGS',tagAll:'ALL',useLunar:'Lunar Cycle',lunarTip:'Calculate based on Lunar calendar',yes:'Yes',no:'No',timezone:'Timezone',disabledFilter:'DISABLED',policyConfig:'Policy Config',policyNotify:'Notify Days',policyAuto:'Auto Renew',policyRenewDay:'Renew Days',useGlobal:'Global Default',autoRenewOnDesc:'Auto Renew when overdue',autoRenewOffDesc:'Auto Disable when overdue',previewCalc:'Calculated based on Last Renew Date & Interval',nextDue:'NEXT DUE'}
+            tag:{alert:'ALERT',renew:'RENEWED',disable:'DISABLED',normal:'NORMAL'},msg:{confirmRenew: 'Renew [%s] to today based on your timezone?',renewSuccess: 'Renewed! Date updated: %s -> %t',tokenReset: 'Token Reset. Update your calendar apps.', copyOk: 'Link Copied', exportSuccess: 'Backup Downloaded',importSuccess: 'Restore Success, Refreshing...',importFail: 'Import Failed, Check File Format',passReq:'Password Required',saved:'Data Saved',saveFail:'Save Failed',cleared:'Cleared',clearFail:'Clear Failed',loginFail:'Access Denied',loadLogFail:'Load Failed',confirmDel:'Confirm Delete?',dateError:'Last renew date cannot be earlier than create date',nameReq:'Name Required',nameExist:'Name already exists',futureError:'Renew date cannot be in the future',serviceDisabled:'Service Disabled',serviceEnabled:'Service Enabled',execFinish: 'EXECUTION FINISHED!'},tags:'TAGS',tagPlaceholder:'Press Enter to create tag',searchPlaceholder:'Search...',tagsCol:'TAGS',tagAll:'ALL',useLunar:'Lunar Cycle',lunarTip:'Calculate based on Lunar calendar',yes:'Yes',no:'No',timezone:'Timezone',disabledFilter:'DISABLED',policyConfig:'Policy Config',policyNotify:'Notify Days',policyAuto:'Auto Renew',policyRenewDay:'Renew Days',useGlobal:'Global Default',autoRenewOnDesc:'Auto Renew when overdue',autoRenewOffDesc:'Auto Disable when overdue',previewCalc:'Based on Last Renew Date & Interval',nextDue:'NEXT DUE'}
         };
         const LUNAR={info:[0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,0x06566,0x0d4a0,0x0ea50,0x06e95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950,0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557,0x06ca0,0x0b550,0x15355,0x04da0,0x0a5b0,0x14573,0x052b0,0x0a9a8,0x0e950,0x06aa0,0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,0x05b57,0x056a0,0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,0x0b6a0,0x195a6,0x095b0,0x049b0,0x0a974,0x0a4b0,0x0b27a,0x06a50,0x06d40,0x0af46,0x0ab60,0x09570,0x04af5,0x04970,0x064b0,0x074a3,0x0ea50,0x06b58,0x055c0,0x0ab60,0x096d5,0x092e0,0x0c960,0x0d954,0x0d4a0,0x0da50,0x07552,0x056a0,0x0abb7,0x025d0,0x092d0,0x0cab5,0x0a950,0x0b4a0,0x0baa4,0x0ad50,0x055d9,0x04ba0,0x0a5b0,0x15176,0x052b0,0x0a930,0x07954,0x06aa0,0x0ad50,0x05b52,0x04b60,0x0a6e6,0x0a4e0,0x0d260,0x0ea65,0x0d530,0x05aa0,0x076a3,0x096d0,0x04bd7,0x04ad0,0x0a4d0,0x1d0b6,0x0d250,0x0d520,0x0dd45,0x0b5a0,0x056d0,0x055b2,0x049b0,0x0a577,0x0a4b0,0x0aa50,0x1b255,0x06d20,0x0ada0,0x14b63,0x09370,0x049f8,0x04970,0x064b0,0x168a6,0x0ea50,0x06b20,0x1a6c4,0x0aae0,0x0a2e0,0x0d2e3,0x0c960,0x0d557,0x0d4a0,0x0da50,0x05d55,0x056a0,0x0a6d0,0x055d4,0x052d0,0x0a9b8,0x0a950,0x0b4a0,0x0b6a6,0x0ad50,0x055a0,0x0aba4,0x0a5b0,0x052b0,0x0b273,0x06930,0x07337,0x06aa0,0x0ad50,0x14b55,0x04b60,0x0a570,0x054e4,0x0d160,0x0e968,0x0d520,0x0daa0,0x16aa6,0x056d0,0x04ae0,0x0a9d4,0x0a2d0,0x0d150,0x0f252,0x0d520],gan:'甲乙丙丁戊己庚辛壬癸'.split(''),zhi:'子丑寅卯辰巳午未申酉戌亥'.split(''),months:'正二三四五六七八九十冬腊'.split(''),days:'初一,初二,初三,初四,初五,初六,初七,初八,初九,初十,十一,十二,十三,十四,十五,十六,十七,十八,十九,二十,廿一,廿二,廿三,廿四,廿五,廿六,廿七,廿八,廿九,三十'.split(','),lYearDays(y){let s=348;for(let i=0x8000;i>0x8;i>>=1)s+=(this.info[y-1900]&i)?1:0;return s+this.leapDays(y)},leapDays(y){if(this.leapMonth(y))return(this.info[y-1900]&0x10000)?30:29;return 0},leapMonth(y){return this.info[y-1900]&0xf},monthDays(y,m){return(this.info[y-1900]&(0x10000>>m))?30:29},solar2lunar(y,m,d){if(y<1900||y>2100)return null;const base=new Date(1900,0,31),obj=new Date(y,m-1,d);let offset=Math.round((obj-base)/86400000);let ly=1900,temp=0;for(;ly<2101&&offset>0;ly++){temp=this.lYearDays(ly);offset-=temp}if(offset<0){offset+=temp;ly--}let lm=1,leap=this.leapMonth(ly),isLeap=false;for(;lm<13&&offset>0;lm++){if(leap>0&&lm===(leap+1)&&!isLeap){--lm;isLeap=true;temp=this.leapDays(ly)}else{temp=this.monthDays(ly,lm)}if(isLeap&&lm===(leap+1))isLeap=false;offset-=temp}if(offset===0&&leap>0&&lm===leap+1){if(isLeap)isLeap=false;else{isLeap=true;--lm}}if(offset<0){offset+=temp;--lm}const ld=offset+1,gIdx=(ly-4)%10,zIdx=(ly-4)%12;const yStr=this.gan[gIdx<0?gIdx+10:gIdx]+this.zhi[zIdx<0?zIdx+12:zIdx];const mStr=(isLeap?'闰':'')+this.months[lm-1]+'月';return{year:ly,month:lm,day:ld,isLeap,yearStr:yStr,monthStr:mStr,dayStr:this.days[ld-1],fullStr:yStr+'年'+mStr+this.days[ld-1]}}};
         
@@ -2218,6 +2242,13 @@ const HTML = `<!DOCTYPE html>
                         localStorage.setItem('theme', 'light');
                     }
                 };
+                
+                // Responsive Drawer
+                const windowWidth = ref(window.innerWidth);
+                const updateWidth = () => windowWidth.value = window.innerWidth;
+                const drawerSize = computed(() => windowWidth.value < 640 ? '100%' : '600px'); // 640px matching tailwind sm
+                const actionColWidth = computed(() => windowWidth.value < 640 ? 100 : 180);
+                const paginationLayout = computed(() => windowWidth.value < 640 ? 'prev, pager, next, jumper' : 'total, sizes, prev, pager, next, jumper');
                 // 2. 定义分页状态
                 const currentPage = ref(1);
                 const pageSize = ref(10); // 默认每页显示 10 条
@@ -2336,6 +2367,11 @@ const HTML = `<!DOCTYPE html>
                     const l = localStorage.getItem('lang'); if(l) setLang(l);
                     const tk = localStorage.getItem('jwt_token'); if(tk) fetchList(tk);
                     
+                    window.addEventListener('resize', updateWidth);
+                });
+
+                onUnmounted(() => {
+                    window.removeEventListener('resize', updateWidth);
                 });
 
                 const setLang = (l) => { lang.value=l; localStorage.setItem('lang',l); locale.value=(l==='zh'?ZhCn:null); };
@@ -2440,6 +2476,24 @@ const HTML = `<!DOCTYPE html>
                     await saveData(nl, null);
                     list.value = nl;
                     tableKey.value++;
+                };
+                const confirmDelete = (row) => {
+                     ElMessageBox.confirm(
+                        t('msg.confirmDel'),
+                        t('tipDelete'),
+                        { confirmButtonText: t('yes'), cancelButtonText: t('no'), type: 'warning' }
+                    ).then(() => {
+                        deleteItem(row);
+                    }).catch(() => {});
+                };
+                const confirmRenew = (row) => {
+                    ElMessageBox.confirm(
+                        t('msg.confirmRenew').replace('%s', row.name),
+                        t('manualRenew'),
+                        { confirmButtonText: t('yes'), cancelButtonText: t('no'), type: 'warning' }
+                    ).then(() => {
+                        manualRenew(row);
+                    }).catch(() => {});
                 };
                 
                 const logVisible = ref(false);
@@ -2674,7 +2728,7 @@ const HTML = `<!DOCTYPE html>
                     Edit, Delete, Plus, VideoPlay, Setting, Bell, Document, Lock, Monitor, SwitchButton, Calendar, Timer, Files, AlarmClock, Warning, Search, Cpu, Link, Message, Promotion, Iphone, Moon, Sunny,
                     getDaysClass, formatDaysLeft, getTagClass, getLogColor, getLunarStr, getYearGanZhi, getSmartLunarText, getLunarTooltip, getMonthStr, getTagCount, tableRowClassName, channelMap, toggleChannel, testChannel, testing,
                     calendarUrl, copyIcsUrl, resetCalendarToken,manualRenew,RefreshRight,timezoneList,currentPage, pageSize, pagedList, previewData,
-                    isDark, toggleTheme,
+                    isDark, toggleTheme, drawerSize, actionColWidth, paginationLayout, confirmDelete, confirmRenew, More, windowWidth,
                     handleSortChange, handleFilterChange, 
                     nextDueFilters, typeFilters, uptimeFilters, lastRenewFilters
                 };
